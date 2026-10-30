@@ -7,7 +7,32 @@
 ```
 parquet_store/us/<TICKER>.parquet   单票前复权日线，563 个标的（含基准 SPY）
 pit/sp500_membership.csv.gz         标普 500 时点成分股快照，列 date,tickers
+fundamentals_us/annual_long.parquet   SEC XBRL 财务长表（13 万行，ticker×concept×年度）
+fundamentals_us/annual_wide.parquet   SEC XBRL 财务宽表（9.5 千行，每行一个 ticker×财年）
+fundamentals_us/summary.json          抓取覆盖统计
 QUANT-AGENT-DATA-SOURCES.md         数据获取与存储说明（A股 + 美股）
+```
+
+## 财务数据（SEC EDGAR 一手 XBRL）
+
+`fundamentals_us/` 由 `scripts/quant_agent/us/sec_fundamentals.py` 抓取 **SEC 官方接口**
+（`data.sec.gov` companyconcept），非第三方聚合，覆盖 **519/563 只**（32 只无 CIK：退市/改名/行业 ETF）。
+
+- **科目**：Assets、Liabilities、StockholdersEquity、NetIncomeLoss、Revenues、GrossProfit、
+  OperatingIncomeLoss、NetCashProvidedByUsedInOperatingActivities、LongTermDebtNoncurrent、
+  CommonStockSharesOutstanding、PaymentsOfDividends、PaymentsForRepurchaseOfCommonStock、EarningsPerShareDiluted
+- **只取 10-K 年报**：以资产负债表科目（只在期末出现）的 `end` 为年度锚点，剔除 10-K 里夹带的季度期间事实
+- **PIT（时点）**：每条事实带 `filed`（申报日），同一 `end` 被重述时保留**最早 filed** 的原始值，
+  用 `filed_first` 做时点对齐，避免前视偏差
+- **派生比率**：`roe / roa / gpoa(毛利/资产) / cfoa(经营现金流/资产) / leverage / ltd_ratio /
+  gross_margin / operating_margin / payout((股息+回购)/净利润)`
+- 覆盖：assets 88%、equity 97%、net_income 92%、cfo 86%、roe 91%（缺失集中在早期年份与金融类无毛利科目）
+
+更新命令（需要 SEC 可访问，约 30–40 分钟）：
+
+```bash
+python scripts/quant_agent/us/sec_fundamentals.py --data-root data/us --workers 16
+python scripts/quant_agent/us/sec_fundamentals.py --data-root data/us --convert-only  # 只重建 parquet
 ```
 
 ## 数据口径

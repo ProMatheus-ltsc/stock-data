@@ -146,3 +146,33 @@ python -m quant_agent.us fetch --kline AAPL,MSFT  # 用前复权 K 线做权威�
 | 基本面 | AKShare 估值+财务 | 不适用 |
 
 > 仅客观数据获取/存储说明，不构成投资建议。
+
+---
+
+## 8. 美股财务数据（SEC EDGAR 一手 XBRL）
+
+美股基本面来自 **SEC 官方接口**，不经过任何第三方聚合：
+
+| 接口 | 用途 |
+|------|------|
+| `https://www.sec.gov/files/company_tickers.json` | ticker → 10 位 CIK 映射 |
+| `https://data.sec.gov/api/xbrl/companyconcept/CIK{cik}/us-gaap/{tag}.json` | 单概念全部历史事实 |
+
+口径：
+
+- **只取 10-K 年报**。坑：10-K 申报同样承载季度期间的事实，仅按 `form=10-K & fp=FY` 会混入季末行；
+  实现上以**资产负债表科目**（Assets / Equity / Liabilities / Shares，只在期末出现）的 `end` 作年度锚点，
+  其余科目只保留与锚点同日期的事实。
+- **PIT（时点对齐）**：每条事实带 `filed`（申报日）。同一 `end` 被重述时保留**最早 filed** 的原始值，
+  产出 `filed_first` 供策略层按时点取数，杜绝"用后来才公告/修订的财报回看历史"。
+- **同义科目合并**：准则切换会导致标签迁移（`Revenues` → `RevenueFromContractWithCustomerExcludingAssessedTax`、
+  `PaymentsOfDividendsCommonStock` → `PaymentsOfDividends`）。按「覆盖到最新期的标签为主标签、逐 `end` 合并」处理，
+  只取第一个非空标签会把数据截断到切换年份之前。
+- **限速**：SEC 允许 10 req/s，实现用全局令牌（0.125s 间隔）+ 16 线程并发；563 只 × 13 概念约 30–40 分钟。
+- **覆盖**：519/563（92%）。32 只无 CIK（退市/改名/行业 ETF 如 XLE、XLF），3 只无 XBRL（SPY、XOM 重组新实体等）。
+
+产物：`fundamentals_us/annual_long.parquet`（长表）、`annual_wide.parquet`（宽表 + 派生比率）、`summary.json`。
+
+派生比率：`roe`、`roa`、`gpoa`（毛利/资产）、`cfoa`（经营现金流/资产）、`leverage`（负债/资产）、
+`ltd_ratio`、`gross_margin`、`operating_margin`、`payout`（(股息+回购)/净利润）。
+市值相关指标（B/M）需与行情面板 JOIN，见 `scripts/quant_agent/us/buffett.py`。

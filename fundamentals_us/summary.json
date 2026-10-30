@@ -1,0 +1,38 @@
+{
+  "requested": 563,
+  "ok": 519,
+  "no_cik": 32,
+  "empty": 3,
+  "long_jsonl": "data/us\\fundamentals_us\\annual_long.jsonl",
+  "sample_no_cik": [
+    "ANSS",
+    "AVB",
+    "BK",
+    "CTLT",
+    "CTRA",
+    "DAY",
+    "DFS",
+    "EA",
+    "EQR",
+    "FI",
+    "HES",
+    "HOLX",
+    "IPG",
+    "JNPR",
+    "K",
+    "MMC",
+    "MRO",
+    "PSKY",
+    "QRVO",
+    "SQ"
+  ],
+  "sample_empty": [
+    "HONA",
+    "SPY",
+    "XOM"
+  ],
+  "rows_long": 135154,
+  "rows_wide": 26576,
+  "long_path": "data/us\\fundamentals_us\\annual_long.parquet",
+  "wide_path": "data/us\\fundamentals_us\\annual_wide.parquet"
+}
