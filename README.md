@@ -83,3 +83,15 @@ cd scripts && python -m quant_agent.us fetch --kline AAPL,MSFT
 更新后在本仓库重新提交 `parquet_store/us/*.parquet` 即可，子模块指针按需推进。
 
 > 仅客观数据与说明，不构成投资建议。数据可能有延迟，以交易所官方为准。
+
+### 股数口径修正（重要）
+
+`shares_dei`（封面页 `dei:EntityCommonStockSharesOutstanding`）是算市值的**唯一可信口径**：
+
+- `us-gaap:CommonStockSharesOutstanding` 单位不统一（千股/百万股），且常只报**单一股份类别**
+  （如 Alphabet 仅 Class A 约 3,300 万股，实际总量约 7 亿股），直接算市值会把 B/M 抬高数十倍。
+- 另有一层坑：行情是**前复权价**（已按拆股调整），若配**当年原始股数**，拆股公司市值被低估数十倍
+  （实测 NVDA 2019 差约 40 倍）。正确做法是 `equity / (qfq_price × shares_latest)`——
+  总权益不随拆股变化，用最新股数配前复权价才自洽。
+- dei 的 `end` 是**封面日**（如 2024-10-18），与财年末（2024-09-28）不同，必须按**同一份 10-K 的 `filed`** 对齐。
+- 宽表已产出 `shares_final` / `shares_source`（`dei` 8522 行 / `us-gaap` 982 行），调用方应只信任 `dei`。
